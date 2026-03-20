@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VG TV - Channel Details</title>
+    <title>VG TV</title>
+    <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
     
     <style>
         :root {
@@ -37,18 +38,13 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        .brand {
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            margin-right: auto;
-        }
-        .brand span { color: var(--accent); }
+        .nav-logo { height: 35px; margin-right: 10px; object-fit: contain; }
 
         .filter-group { 
             display: flex; 
             gap: 10px; 
             flex-wrap: wrap;
+            flex: 1;
         }
 
         select, input { 
@@ -62,6 +58,8 @@
             cursor: pointer;
             transition: 0.3s;
         }
+        input[type="text"] { flex: 1; min-width: 150px; }
+        select { flex: 1; min-width: 120px; }
         select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(229, 9, 20, 0.4); }
 
         /* --- Grid Layout --- */
@@ -254,7 +252,7 @@
 <body>
 
     <div class="nav">
-        <div class="brand">VG <span>TV</span></div>
+        <img src="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/logo.png" alt="VG TV Logo" class="nav-logo">
         
         <div class="filter-group">
             <input type="text" id="searchInput" placeholder="Search channels...">
@@ -297,10 +295,10 @@
         const langFilter = document.getElementById('langFilter');
         const modal = document.getElementById('channelModal');
 
-        // 1. Fetch the Data (Channels & Global Cookie simultaneously)
+        // 1. Fetch the Data
         async function loadData() {
             try {
-                // Fetch Global Cookie
+                // Fetch Global Cookie for the modal display
                 fetch(COOKIE_API)
                     .then(res => res.json())
                     .then(data => globalLiveCookie = data.cookie || "No cookie found")
@@ -320,7 +318,6 @@
                     url: c.channel_url || "No URL Provided",
                     keyId: c.keyId || "Null",
                     key: c.key || "Null"
-                    // Removed c.cookie map, we force the global cookie now.
                 }));
 
                 allChannels.sort((a, b) => a.name.localeCompare(b.name));
@@ -334,7 +331,7 @@
             }
         }
 
-        // 2. Populate Dropdowns Dynamically
+        // 2. Populate Dropdowns
         function populateFilters() {
             const categories = new Set();
             const languages = new Set();
@@ -385,7 +382,7 @@
             });
         }
 
-        // 4. Modal Functions
+        // 4. Modal Functions (Displays data & chops URL)
         function openModal(channel) {
             document.getElementById('modalImg').src = channel.logo;
             document.getElementById('modalTitle').innerText = channel.name;
@@ -397,6 +394,9 @@
             } else if (cleanUrl && cleanUrl.includes('?')) {
                 cleanUrl = cleanUrl.split('?')[0]; 
             }
+
+            // Create a safe channel object to pass to the play button
+            const safeChannel = { ...channel, url: cleanUrl };
 
             const modalDetails = document.getElementById('modalDetails');
             modalDetails.innerHTML = `
@@ -421,11 +421,11 @@
                 </div>
 
                 <div class="detail-box">
-                    <span class="detail-label">Live Auth Cookie (From API)</span>
+                    <span class="detail-label">Live Auth Cookie</span>
                     <div class="detail-value scrollable">${globalLiveCookie}</div>
                 </div>
 
-                <button class="play-btn" onclick='startPlayer(${JSON.stringify(channel).replace(/'/g, "&apos;")})'>
+                <button class="play-btn" onclick='playInNewTab(${JSON.stringify(safeChannel).replace(/'/g, "&apos;")})'>
                     ▶ Play Channel
                 </button>
             `;
@@ -463,22 +463,16 @@
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);
 
-        // 6. Generate Player in New Tab
-        function startPlayer(channel) {
-            const name = channel.name;
-            let cleanUrl = channel.url;
-            if (cleanUrl && cleanUrl.includes('.mpd')) {
-                cleanUrl = cleanUrl.substring(0, cleanUrl.indexOf('.mpd') + 4);
-            } else if (cleanUrl && cleanUrl.includes('?')) {
-                cleanUrl = cleanUrl.split('?')[0]; 
-            }
-            
-            const kid = (channel.keyId && channel.keyId !== "Null") ? channel.keyId : "";
-            const key = (channel.key && channel.key !== "Null") ? channel.key : "";
+        // 6. EXACT Shaka Player Logic integrated here
+        function playInNewTab(c) {
+            const name = c.name || "VG Player";
+            const url = c.url || "";
+            const kid = (c.keyId && c.keyId !== "Null") ? c.keyId : "";
+            const key = (c.key && c.key !== "Null") ? c.key : "";
 
             const safeKid = JSON.stringify(kid);
             const safeKey = JSON.stringify(key);
-            const safeUrl = JSON.stringify(cleanUrl);
+            const safeUrl = JSON.stringify(url);
 
             const playerCode = `<!DOCTYPE html>
 <html>
@@ -494,6 +488,7 @@
     html, body { background: #000; height: 100vh; width: 100vw; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
     .shaka-video-container { position: absolute; inset: 0; width: 100%; height: 100%; }
     video { width: 100%; height: 100%; background: #000; object-fit: contain; }
+    .shaka-spinner-container { display: none !important; }
   </style>
 </head>
 <body>
@@ -513,56 +508,58 @@
         const ui = new shaka.ui.Overlay(player, document.querySelector('.shaka-video-container'), video);
 
         ui.configure({
-            addBigPlayButton: true,
-            controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','quality','picture_in_picture','fullscreen'],
-            seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
+            controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','language','captions','picture_in_picture','quality','fullscreen'],
+            seekBarColors: { base: 'white', buffered: 'red', played: 'white' }
         });
 
         const kid = ${safeKid};
         const key = ${safeKey};
         let streamUrl = ${safeUrl};
-
-        let drmConfig = { clearKeys: {} };
-        if(kid && key) { drmConfig.clearKeys[kid] = key; }
-        player.configure({ drm: drmConfig });
-
-        // Fetch fresh cookie directly from the global URL
         let cookieHeader = "";
+
         try {
-            const res = await fetch('${COOKIE_API}', { cache: 'no-store' });
+            const res = await fetch('https://allrounderid2.pages.dev/api/cookie.json');
             const data = await res.json();
             cookieHeader = data.cookie || "";
         } catch (e) {
-            console.error("Failed to fetch live cookie", e);
+            console.error("Failed to fetch primary cookie", e);
         }
 
-        if(cookieHeader) {
-            player.getNetworkingEngine().registerRequestFilter((type, request) => {
-                let urlCookie = cookieHeader.replace('Cookie: ', '').trim();
-                if (urlCookie.startsWith("__hdnea__=")) urlCookie = urlCookie.substring(10);
-
-                if((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
-                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
-                !request.uris[0].includes("__hdnea__")) {
-                    const sep = request.uris[0].includes("?") ? "&" : "?";
-                    request.uris[0] += sep + "__hdnea__=" + urlCookie;
-                }
-            });
+        let drmConfig = { clearKeys: {} };
+        if(kid && key) {
+            drmConfig.clearKeys[kid] = key;
         }
 
-        player.addEventListener('error', (event) => console.error('Shaka Error:', event.detail));
+        player.configure({ drm: drmConfig });
+
+        player.getNetworkingEngine().registerRequestFilter((type, request) => {
+            request.headers['Referer'] = 'https://www.jiotv.com/';
+            request.headers['User-Agent'] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+            if(cookieHeader) request.headers['Cookie'] = cookieHeader;
+
+            if ((type === shaka.net.NetworkingEngine.RequestType.MANIFEST || type === shaka.net.NetworkingEngine.RequestType.SEGMENT) && request.uris[0] && !request.uris[0].includes('__hdnea=')) {
+                let urlCookie = cookieHeader.startsWith('__hdnea__=') ? cookieHeader.substring(10) : cookieHeader;
+                const sep = request.uris[0].includes('?') ? '&' : '?';
+                request.uris[0] += sep + "__hdnea__=" + urlCookie;
+            }
+        });
+
+        player.addEventListener('error', (event) => {
+             console.error('Error code', event.detail.code, 'object', event.detail);
+        });
 
         try {
             await player.load(streamUrl);
-            video.play().catch(()=>{});
-        } catch(e) { console.error("Load failed", e); }
+            video.play();
+        } catch (e) { console.error(e); }
     });
   <\/script>
 </body>
 </html>`;
 
             const blob = new Blob([playerCode], { type: 'text/html' });
-            window.open(URL.createObjectURL(blob), '_blank');
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
         }
 
         // Start App

@@ -365,15 +365,23 @@ function startPlayer(channelData) {
             const response = await fetch(CONFIG.cookieUrl, { cache: "no-store" });
             const data = await response.json();
             cookieValue = data.cookie || "";
-        } catch(e) {}
+        } catch(e) {
+            console.error("Failed to fetch cookie JSON", e);
+        }
 
         if(cookieValue) {
             player.getNetworkingEngine().registerRequestFilter((type, request) => {
-                request.headers["Referer"] = "https://www.jiotv.com/";
-                request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
-                request.headers["Cookie"] = cookieValue;
+                
+                // REMOVED: Unsafe headers that crash browser fetch requests
+                // request.headers["Referer"] = "https://www.jiotv.com/";
+                // request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+                // request.headers["Cookie"] = cookieValue;
 
-                let urlCookie = cookieValue.startsWith("__hdnea__=") ? cookieValue.substring(10) : cookieValue;
+                // Safely extract the token and append it to the URL instead
+                let urlCookie = cookieValue.replace('Cookie: ', '').trim();
+                if (urlCookie.startsWith("__hdnea__=")) {
+                    urlCookie = urlCookie.substring(10);
+                }
 
                 if((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
                 type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
@@ -384,10 +392,16 @@ function startPlayer(channelData) {
             });
         }
 
+        player.addEventListener('error', (event) => {
+             console.error('Shaka Error Code:', event.detail.code, 'Details:', event.detail);
+        });
+
         try {
             await player.load(CONFIG.streamUrl);
             video.play().catch(()=>{});
-        } catch(e) {}
+        } catch(e) {
+            console.error("Failed to load stream", e);
+        }
 
         video.addEventListener("play", () => {
             video.muted = false;

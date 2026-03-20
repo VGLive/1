@@ -224,13 +224,31 @@
             color: #e2e8f0;
             font-family: monospace;
             word-break: break-all;
-            user-select: all; /* Allows easy 1-click copying */
+            user-select: all; 
         }
         .detail-value.scrollable {
             max-height: 80px;
             overflow-y: auto;
         }
         
+        /* Play Button in Modal */
+        .play-btn {
+            margin-top: 10px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .play-btn:hover {
+            background: #ff0a16;
+            transform: scale(1.02);
+        }
     </style>
 </head>
 <body>
@@ -266,9 +284,11 @@
     </div>
 
     <script>
-        const API_URL = "https://allrounderid.pages.dev/api/jiotv.json";
+        const CHANNELS_API = "https://allrounderid.pages.dev/api/jiotv.json";
+        const COOKIE_API = "https://allrounderid2.pages.dev/api/cookie.json";
         
         let allChannels = [];
+        let globalLiveCookie = "Fetching live cookie...";
         
         // DOM Elements
         const grid = document.getElementById('grid');
@@ -277,15 +297,21 @@
         const langFilter = document.getElementById('langFilter');
         const modal = document.getElementById('channelModal');
 
-        // 1. Fetch the Data
+        // 1. Fetch the Data (Channels & Global Cookie simultaneously)
         async function loadData() {
             try {
-                const response = await fetch(API_URL);
+                // Fetch Global Cookie
+                fetch(COOKIE_API)
+                    .then(res => res.json())
+                    .then(data => globalLiveCookie = data.cookie || "No cookie found")
+                    .catch(err => globalLiveCookie = "Error fetching cookie");
+
+                // Fetch Channels
+                const response = await fetch(CHANNELS_API);
                 if (!response.ok) throw new Error("Network response was not ok");
                 
                 const data = await response.json();
                 
-                // Map API data to include ALL required fields for the modal
                 allChannels = data.map(c => ({
                     name: c.channel_name || "Unknown Channel",
                     logo: c.channel_logo || "https://via.placeholder.com/70?text=TV",
@@ -293,11 +319,10 @@
                     language: c.channel_language || c.language || "Others",
                     url: c.channel_url || "No URL Provided",
                     keyId: c.keyId || "Null",
-                    key: c.key || "Null",
-                    cookie: c.cookie || "No Cookie Present"
+                    key: c.key || "Null"
+                    // Removed c.cookie map, we force the global cookie now.
                 }));
 
-                // Sort alphabetically
                 allChannels.sort((a, b) => a.name.localeCompare(b.name));
 
                 populateFilters();
@@ -346,8 +371,6 @@
             channelsToRender.forEach(c => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                
-                // Attach Click Event to open Modal
                 card.onclick = () => openModal(c);
 
                 card.innerHTML = `
@@ -372,7 +395,7 @@
             if (cleanUrl && cleanUrl.includes('.mpd')) {
                 cleanUrl = cleanUrl.substring(0, cleanUrl.indexOf('.mpd') + 4);
             } else if (cleanUrl && cleanUrl.includes('?')) {
-                cleanUrl = cleanUrl.split('?')[0]; // fallback safely removes parameters
+                cleanUrl = cleanUrl.split('?')[0]; 
             }
 
             const modalDetails = document.getElementById('modalDetails');
@@ -398,21 +421,24 @@
                 </div>
 
                 <div class="detail-box">
-                    <span class="detail-label">Auth Cookie</span>
-                    <div class="detail-value scrollable">${channel.cookie}</div>
+                    <span class="detail-label">Live Auth Cookie (From API)</span>
+                    <div class="detail-value scrollable">${globalLiveCookie}</div>
                 </div>
+
+                <button class="play-btn" onclick='startPlayer(${JSON.stringify(channel).replace(/'/g, "&apos;")})'>
+                    ▶ Play Channel
+                </button>
             `;
 
             modal.classList.add('active');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            document.body.style.overflow = 'hidden'; 
         }
 
         function closeModal() {
             modal.classList.remove('active');
-            document.body.style.overflow = 'auto'; // Restore background scrolling
+            document.body.style.overflow = 'auto'; 
         }
 
-        // Close modal when clicking outside the box
         modal.addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
@@ -436,6 +462,108 @@
         searchInput.addEventListener('input', applyFilters);
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);
+
+        // 6. Generate Player in New Tab
+        function startPlayer(channel) {
+            const name = channel.name;
+            let cleanUrl = channel.url;
+            if (cleanUrl && cleanUrl.includes('.mpd')) {
+                cleanUrl = cleanUrl.substring(0, cleanUrl.indexOf('.mpd') + 4);
+            } else if (cleanUrl && cleanUrl.includes('?')) {
+                cleanUrl = cleanUrl.split('?')[0]; 
+            }
+            
+            const kid = (channel.keyId && channel.keyId !== "Null") ? channel.keyId : "";
+            const key = (channel.key && channel.key !== "Null") ? channel.key : "";
+
+            const safeKid = JSON.stringify(kid);
+            const safeKey = JSON.stringify(key);
+            const safeUrl = JSON.stringify(cleanUrl);
+
+            const playerCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${name}</title>
+  <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"><\/script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: #000; height: 100vh; width: 100vw; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+    .shaka-video-container { position: absolute; inset: 0; width: 100%; height: 100%; }
+    video { width: 100%; height: 100%; background: #000; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <div class="shaka-video-container" data-shaka-player>
+    <video autoplay playsinline preload="metadata" id="video"></video>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        shaka.polyfill.installAll();
+        if (!shaka.Player.isBrowserSupported()) {
+            alert('Browser not supported');
+            return;
+        }
+
+        const video = document.getElementById('video');
+        const player = new shaka.Player(video);
+        const ui = new shaka.ui.Overlay(player, document.querySelector('.shaka-video-container'), video);
+
+        ui.configure({
+            addBigPlayButton: true,
+            controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','quality','picture_in_picture','fullscreen'],
+            seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
+        });
+
+        const kid = ${safeKid};
+        const key = ${safeKey};
+        let streamUrl = ${safeUrl};
+
+        let drmConfig = { clearKeys: {} };
+        if(kid && key) { drmConfig.clearKeys[kid] = key; }
+        player.configure({ drm: drmConfig });
+
+        // Fetch fresh cookie directly from the global URL
+        let cookieHeader = "";
+        try {
+            const res = await fetch('${COOKIE_API}', { cache: 'no-store' });
+            const data = await res.json();
+            cookieHeader = data.cookie || "";
+        } catch (e) {
+            console.error("Failed to fetch live cookie", e);
+        }
+
+        if(cookieHeader) {
+            player.getNetworkingEngine().registerRequestFilter((type, request) => {
+                let urlCookie = cookieHeader.replace('Cookie: ', '').trim();
+                if (urlCookie.startsWith("__hdnea__=")) urlCookie = urlCookie.substring(10);
+
+                if((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
+                !request.uris[0].includes("__hdnea__")) {
+                    const sep = request.uris[0].includes("?") ? "&" : "?";
+                    request.uris[0] += sep + "__hdnea__=" + urlCookie;
+                }
+            });
+        }
+
+        player.addEventListener('error', (event) => console.error('Shaka Error:', event.detail));
+
+        try {
+            await player.load(streamUrl);
+            video.play().catch(()=>{});
+        } catch(e) { console.error("Load failed", e); }
+    });
+  <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([playerCode], { type: 'text/html' });
+            window.open(URL.createObjectURL(blob), '_blank');
+        }
 
         // Start App
         loadData();

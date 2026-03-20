@@ -382,7 +382,7 @@
             });
         }
 
-        // 4. Modal Functions
+        // 4. Modal Functions & Data Packaging
         function openModal(channel) {
             document.getElementById('modalImg').src = channel.logo;
             document.getElementById('modalTitle').innerText = channel.name;
@@ -395,7 +395,14 @@
                 cleanUrl = cleanUrl.split('?')[0]; 
             }
 
-            const safeChannel = { ...channel, url: cleanUrl };
+            // PACKAGE STRICTLY WHAT IS VISIBLE IN THE MODAL
+            const modalDataPackage = {
+                name: channel.name,
+                url: cleanUrl,
+                keyId: channel.keyId,
+                key: channel.key,
+                cookie: globalLiveCookie // Pass the globally fetched cookie text directly
+            };
 
             const modalDetails = document.getElementById('modalDetails');
             modalDetails.innerHTML = `
@@ -424,7 +431,7 @@
                     <div class="detail-value scrollable">${globalLiveCookie}</div>
                 </div>
 
-                <button class="play-btn" onclick='playInNewTab(${JSON.stringify(safeChannel).replace(/'/g, "&apos;")})'>
+                <button class="play-btn" onclick='playInNewTab(${JSON.stringify(modalDataPackage).replace(/'/g, "&apos;")})'>
                     ▶ Play Channel
                 </button>
             `;
@@ -462,23 +469,20 @@
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);
 
-        // 6. EXACT Shaka Player Logic integrated here (Cleaned of Unsafe Headers)
+        // 6. Generates Player strictly using passed data (Zero API calls here)
         function playInNewTab(c) {
-            const name = c.name || "VG Player";
-            const url = c.url || "";
-            const kid = (c.keyId && c.keyId !== "Null") ? c.keyId : "";
-            const key = (c.key && c.key !== "Null") ? c.key : "";
-
-            const safeKid = JSON.stringify(kid);
-            const safeKey = JSON.stringify(key);
-            const safeUrl = JSON.stringify(url);
+            const safeName = JSON.stringify(c.name || "VG Player");
+            const safeUrl = JSON.stringify(c.url || "");
+            const safeKid = JSON.stringify((c.keyId && c.keyId !== "Null") ? c.keyId : "");
+            const safeKey = JSON.stringify((c.key && c.key !== "Null") ? c.key : "");
+            const safeCookie = JSON.stringify(c.cookie || ""); // Direct inject
 
             const playerCode = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${name}</title>
+  <title>${c.name}</title>
   <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"><\/script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css">
@@ -511,18 +515,11 @@
             seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
         });
 
+        // Exact data imported from the Modal
+        const streamUrl = ${safeUrl};
         const kid = ${safeKid};
         const key = ${safeKey};
-        let streamUrl = ${safeUrl};
-        let cookieHeader = "";
-
-        try {
-            const res = await fetch('${COOKIE_API}', { cache: 'no-store' });
-            const data = await res.json();
-            cookieHeader = data.cookie || "";
-        } catch (e) {
-            console.error("Failed to fetch live cookie", e);
-        }
+        const cookieHeader = ${safeCookie}; 
 
         let drmConfig = { clearKeys: {} };
         if(kid && key) {
@@ -540,10 +537,9 @@
             }
         });
 
-        if(cookieHeader) {
+        // Append cookie strictly via URL parameter
+        if(cookieHeader && cookieHeader !== "No cookie found" && cookieHeader !== "Fetching live cookie..." && cookieHeader !== "Error fetching cookie") {
             player.getNetworkingEngine().registerRequestFilter((type, request) => {
-                // Completely removed unsafe Referer, User-Agent, and Cookie headers here.
-                
                 let urlCookie = cookieHeader.replace('Cookie:', '').trim();
                 if (urlCookie.startsWith('__hdnea__=')) {
                     urlCookie = urlCookie.substring(10);

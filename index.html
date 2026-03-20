@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VG TV - Channel Grid</title>
+    <title>VG TV - Channel Details</title>
     
     <style>
         :root {
             --bg: #0f172a;
             --card: #1e293b;
+            --card-border: #334155;
             --accent: #e50914;
             --text: #f8fafc;
             --sub-text: #94a3b8;
@@ -27,19 +28,20 @@
         /* --- Navbar & Filters --- */
         .nav { 
             padding: 15px 20px; 
-            background: #111; 
+            background: #0b1120; 
             border-bottom: 2px solid var(--accent); 
             display: flex; 
             gap: 15px; 
             align-items: center; 
             flex-wrap: wrap; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
         .brand {
             font-size: 20px;
             font-weight: bold;
             color: white;
-            margin-right: auto; /* Pushes filters to the right */
+            margin-right: auto;
         }
         .brand span { color: var(--accent); }
 
@@ -52,14 +54,15 @@
         select, input { 
             padding: 10px; 
             border-radius: 6px; 
-            border: 1px solid #444; 
+            border: 1px solid var(--card-border); 
             background: #000; 
             color: #fff; 
             outline: none; 
             font-size: 14px; 
             cursor: pointer;
+            transition: 0.3s;
         }
-        select:focus, input:focus { border-color: var(--accent); }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(229, 9, 20, 0.4); }
 
         /* --- Grid Layout --- */
         .grid { 
@@ -77,16 +80,17 @@
             padding: 15px; 
             border-radius: 10px; 
             text-align: center; 
-            border: 1px solid #333; 
-            transition: 0.2s; 
+            border: 1px solid var(--card-border); 
+            cursor: pointer;
+            transition: all 0.2s ease; 
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .card:hover { 
             border-color: var(--accent); 
-            transform: translateY(-3px); 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translateY(-4px); 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
         }
 
         .card img { 
@@ -106,7 +110,7 @@
             overflow: hidden; 
             white-space: nowrap; 
             text-overflow: ellipsis; 
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .card-badges {
@@ -122,15 +126,111 @@
             padding: 3px 6px;
             border-radius: 4px;
             font-weight: bold;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
             color: var(--sub-text);
         }
         .badge.category { border-left: 2px solid var(--accent); }
         .badge.language { border-left: 2px solid #3b82f6; }
 
-        /* Status Messages */
         .status-msg { grid-column: 1/-1; text-align: center; color: var(--sub-text); margin-top: 50px; font-size: 16px; }
 
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* --- MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(30px) scale(0.95);
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0) scale(1);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+        }
+        .modal-header img {
+            width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 8px; padding: 4px;
+        }
+        .modal-header h2 { font-size: 18px; color: #fff; }
+        
+        .close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: none; border: none;
+            color: var(--sub-text); font-size: 28px;
+            cursor: pointer; line-height: 1; transition: 0.2s;
+        }
+        .close-btn:hover { color: var(--accent); }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .detail-box {
+            background: #0b1120;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px 15px;
+        }
+        .detail-label {
+            font-size: 11px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .detail-value {
+            font-size: 13px;
+            color: #e2e8f0;
+            font-family: monospace;
+            word-break: break-all;
+            user-select: all; /* Allows easy 1-click copying */
+        }
+        .detail-value.scrollable {
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        
     </style>
 </head>
 <body>
@@ -139,7 +239,7 @@
         <div class="brand">VG <span>TV</span></div>
         
         <div class="filter-group">
-            <input type="text" id="searchInput" placeholder="Search...">
+            <input type="text" id="searchInput" placeholder="Search channels...">
             <select id="catFilter">
                 <option value="all">All Categories</option>
             </select>
@@ -153,6 +253,18 @@
         <div class="status-msg">Loading channels...</div>
     </div>
 
+    <div id="channelModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <img id="modalImg" src="" alt="Logo">
+                <h2 id="modalTitle">Channel Name</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalDetails">
+                </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://allrounderid.pages.dev/api/jiotv.json";
         
@@ -163,6 +275,7 @@
         const searchInput = document.getElementById('searchInput');
         const catFilter = document.getElementById('catFilter');
         const langFilter = document.getElementById('langFilter');
+        const modal = document.getElementById('channelModal');
 
         // 1. Fetch the Data
         async function loadData() {
@@ -172,12 +285,16 @@
                 
                 const data = await response.json();
                 
-                // Normalize the data format just in case
+                // Map API data to include ALL required fields for the modal
                 allChannels = data.map(c => ({
-                    name: c.channel_name || "Unknown",
+                    name: c.channel_name || "Unknown Channel",
                     logo: c.channel_logo || "https://via.placeholder.com/70?text=TV",
                     category: c.channel_genre || c.category || "Others",
-                    language: c.channel_language || c.language || "Others"
+                    language: c.channel_language || c.language || "Others",
+                    url: c.channel_url || "No URL Provided",
+                    keyId: c.keyId || "Null",
+                    key: c.key || "Null",
+                    cookie: c.cookie || "No Cookie Present"
                 }));
 
                 // Sort alphabetically
@@ -188,13 +305,12 @@
 
             } catch (error) {
                 console.error("Fetch error:", error);
-                grid.innerHTML = `<div class="status-msg" style="color:red;">Failed to load data. Check console.</div>`;
+                grid.innerHTML = `<div class="status-msg" style="color:red;">Failed to load data. Check internet connection.</div>`;
             }
         }
 
         // 2. Populate Dropdowns Dynamically
         function populateFilters() {
-            // Get unique categories and languages using Sets
             const categories = new Set();
             const languages = new Set();
 
@@ -203,7 +319,6 @@
                 if (c.language) languages.add(c.language);
             });
 
-            // Sort and add to HTML
             Array.from(categories).sort().forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat;
@@ -221,7 +336,7 @@
 
         // 3. Render the Grid
         function renderGrid(channelsToRender) {
-            grid.innerHTML = ""; // Clear grid
+            grid.innerHTML = ""; 
 
             if (channelsToRender.length === 0) {
                 grid.innerHTML = `<div class="status-msg">No channels match your filters.</div>`;
@@ -231,8 +346,12 @@
             channelsToRender.forEach(c => {
                 const card = document.createElement('div');
                 card.className = 'card';
+                
+                // Attach Click Event to open Modal
+                card.onclick = () => openModal(c);
+
                 card.innerHTML = `
-                    <img src="${c.logo}" alt="logo" loading="lazy">
+                    <img src="${c.logo}" alt="logo" loading="lazy" onerror="this.src='https://via.placeholder.com/70?text=TV'">
                     <div class="card-title">${c.name}</div>
                     <div class="card-badges">
                         <span class="badge category">${c.category}</span>
@@ -243,30 +362,69 @@
             });
         }
 
-        // 4. Handle Filtering
+        // 4. Modal Functions
+        function openModal(channel) {
+            document.getElementById('modalImg').src = channel.logo;
+            document.getElementById('modalTitle').innerText = channel.name;
+
+            const modalDetails = document.getElementById('modalDetails');
+            modalDetails.innerHTML = `
+                <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                    <span class="badge category">${channel.category}</span>
+                    <span class="badge language">${channel.language}</span>
+                </div>
+                
+                <div class="detail-box">
+                    <span class="detail-label">Stream URL</span>
+                    <div class="detail-value">${channel.url}</div>
+                </div>
+
+                <div class="detail-box">
+                    <span class="detail-label">Key ID (KID)</span>
+                    <div class="detail-value">${channel.keyId}</div>
+                </div>
+
+                <div class="detail-box">
+                    <span class="detail-label">Key</span>
+                    <div class="detail-value">${channel.key}</div>
+                </div>
+
+                <div class="detail-box">
+                    <span class="detail-label">Auth Cookie</span>
+                    <div class="detail-value scrollable">${channel.cookie}</div>
+                </div>
+            `;
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto'; // Restore background scrolling
+        }
+
+        // Close modal when clicking outside the box
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // 5. Handle Filtering
         function applyFilters() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedCat = catFilter.value;
             const selectedLang = langFilter.value;
 
             const filteredChannels = allChannels.filter(c => {
-                // Check Search
                 const matchesSearch = c.name.toLowerCase().includes(searchTerm);
-                
-                // Check Category
                 const matchesCat = (selectedCat === "all") || (c.category === selectedCat);
-                
-                // Check Language
                 const matchesLang = (selectedLang === "all") || (c.language === selectedLang);
-
-                // Include only if it matches ALL active filters
                 return matchesSearch && matchesCat && matchesLang;
             });
 
             renderGrid(filteredChannels);
         }
 
-        // Event Listeners
         searchInput.addEventListener('input', applyFilters);
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);

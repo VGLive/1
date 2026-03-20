@@ -218,7 +218,7 @@ video{
 </div>
 
 <script>
-const API_URL = "https://allrounderid.pages.dev/api/jiotv.json";
+const API_URL = "https://raw.githubusercontent.com/vaathala00/jow/main/output.json";
 let allChannels = [];
 
 const gridView = document.getElementById("gridView");
@@ -238,7 +238,17 @@ async function initApp() {
     
     try {
         const response = await fetch(API_URL);
-        allChannels = await response.json();
+        const rawData = await response.json();
+
+        // Mapped to match your UI and Player expected keys
+        allChannels = rawData.map(c => ({
+            channel_name: c.name || "Unknown",
+            channel_logo: c.logo || "https://via.placeholder.com/100?text=TV",
+            channel_genre: c.group || c.category || "Live TV",
+            channel_url: c.link || c.url || c.stream_url || "",
+            keyId: c.keyId || c.key_id || "Null",
+            key: c.key || "Null"
+        }));
 
         if (targetChannelName) {
             // MODE 1: PLAY CHANNEL
@@ -372,11 +382,6 @@ function startPlayer(channelData) {
         if(cookieValue) {
             player.getNetworkingEngine().registerRequestFilter((type, request) => {
                 
-                // REMOVED: Unsafe headers that crash browser fetch requests
-                // request.headers["Referer"] = "https://www.jiotv.com/";
-                // request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
-                // request.headers["Cookie"] = cookieValue;
-
                 // Safely extract the token and append it to the URL instead
                 let urlCookie = cookieValue.replace('Cookie: ', '').trim();
                 if (urlCookie.startsWith("__hdnea__=")) {

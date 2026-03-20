@@ -367,6 +367,14 @@
             document.getElementById('modalImg').src = channel.logo;
             document.getElementById('modalTitle').innerText = channel.name;
 
+            // CLEAN THE URL: Stop exactly at .mpd (or strip parameters for .m3u8)
+            let cleanUrl = channel.url;
+            if (cleanUrl && cleanUrl.includes('.mpd')) {
+                cleanUrl = cleanUrl.substring(0, cleanUrl.indexOf('.mpd') + 4);
+            } else if (cleanUrl && cleanUrl.includes('?')) {
+                cleanUrl = cleanUrl.split('?')[0]; // fallback safely removes parameters
+            }
+
             const modalDetails = document.getElementById('modalDetails');
             modalDetails.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 5px;">
@@ -376,7 +384,7 @@
                 
                 <div class="detail-box">
                     <span class="detail-label">Stream URL</span>
-                    <div class="detail-value">${channel.url}</div>
+                    <div class="detail-value">${cleanUrl}</div>
                 </div>
 
                 <div class="detail-box">

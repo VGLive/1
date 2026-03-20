@@ -395,13 +395,12 @@
                 cleanUrl = cleanUrl.split('?')[0]; 
             }
 
-            // PACKAGE STRICTLY WHAT IS VISIBLE IN THE MODAL
+            // PACKAGE FOR THE NEW TAB
             const modalDataPackage = {
                 name: channel.name,
                 url: cleanUrl,
                 keyId: channel.keyId,
-                key: channel.key,
-                cookie: globalLiveCookie // Pass the globally fetched cookie text directly
+                key: channel.key
             };
 
             const modalDetails = document.getElementById('modalDetails');
@@ -469,104 +468,167 @@
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);
 
-        // 6. Generates Player strictly using passed data (Zero API calls here)
+        // 6. Generate the exact player code you provided in a new tab
         function playInNewTab(c) {
-            const safeName = JSON.stringify(c.name || "VG Player");
-            const safeUrl = JSON.stringify(c.url || "");
-            const safeKid = JSON.stringify((c.keyId && c.keyId !== "Null") ? c.keyId : "");
-            const safeKey = JSON.stringify((c.key && c.key !== "Null") ? c.key : "");
-            const safeCookie = JSON.stringify(c.cookie || ""); // Direct inject
+            const name = c.name || "VG Player";
+            const url = c.url || "";
+            const kid = (c.keyId && c.keyId !== "Null") ? c.keyId : "";
+            const key = (c.key && c.key !== "Null") ? c.key : "";
+
+            const safeKid = JSON.stringify(kid);
+            const safeKey = JSON.stringify(key);
+            const safeUrl = JSON.stringify(url);
 
             const playerCode = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${c.name}</title>
-  <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"><\/script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { background: #000; height: 100vh; width: 100vw; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
-    .shaka-video-container { position: absolute; inset: 0; width: 100%; height: 100%; }
-    video { width: 100%; height: 100%; background: #000; object-fit: contain; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name}</title>
+<meta name="referrer" content="no-referrer">
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"><\/script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.css"/>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+
+.shaka-video-container{
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+video{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    background:#000;
+}
+
+.custom-watermark{
+    position:absolute;
+    z-index:40;
+    pointer-events:none;
+    top:65%;
+    left:6%;
+    transform:translateY(-50%);
+    font-size:11px;
+    font-weight:600;
+    color:rgba(255,255,255,0.12);
+}
+
+@media(max-width:700px){
+    .custom-watermark{font-size:9px;top:60%;left:16%}
+}
+</style>
 </head>
 <body>
-  <div class="shaka-video-container" data-shaka-player>
-    <video autoplay muted playsinline id="video"></video>
-  </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        shaka.polyfill.installAll();
-        if (!shaka.Player.isBrowserSupported()) {
-            alert('Browser not supported');
-            return;
-        }
 
-        const video = document.getElementById('video');
-        const player = new shaka.Player(video);
-        const ui = new shaka.ui.Overlay(player, document.querySelector('.shaka-video-container'), video);
+<div class="shaka-video-container" id="player-container">
+    <video id="video" autoplay muted playsinline preload="metadata"></video>
+    <div class="custom-watermark"> </div>
+</div>
 
-        ui.configure({
-            addBigPlayButton: true,
-            controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','quality','picture_in_picture','fullscreen'],
-            seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
-        });
+<script>
+(function(){
+  const CONFIG={
+    streamUrl: ${safeUrl},
+    keyId: ${safeKid},
+    key: ${safeKey},
+    cookieUrl:"https://allrounderid2.pages.dev/api/cookie.json"
+  };
 
-        // Exact data imported from the Modal
-        const streamUrl = ${safeUrl};
-        const kid = ${safeKid};
-        const key = ${safeKey};
-        const cookieHeader = ${safeCookie}; 
+  document.addEventListener("DOMContentLoaded",async()=>{
 
-        let drmConfig = { clearKeys: {} };
-        if(kid && key) {
-            drmConfig.clearKeys[kid] = key;
-        }
+    shaka.polyfill.installAll();
+    if(!shaka.Player.isBrowserSupported()) return;
 
-        player.configure({ 
-            drm: drmConfig,
-            manifest: { defaultPresentationDelay: 5 },
-            streaming: {
-                lowLatencyMode: true,
-                bufferingGoal: 10,
-                rebufferingGoal: 2,
-                safeSeekOffset: 5
-            }
-        });
+    const video=document.getElementById("video");
+    const container=document.getElementById("player-container");
 
-        // Append cookie strictly via URL parameter
-        if(cookieHeader && cookieHeader !== "No cookie found" && cookieHeader !== "Fetching live cookie..." && cookieHeader !== "Error fetching cookie") {
-            player.getNetworkingEngine().registerRequestFilter((type, request) => {
-                let urlCookie = cookieHeader.replace('Cookie:', '').trim();
-                if (urlCookie.startsWith('__hdnea__=')) {
-                    urlCookie = urlCookie.substring(10);
-                }
+    video.muted=true;
 
-                if ((type === shaka.net.NetworkingEngine.RequestType.MANIFEST || 
-                     type === shaka.net.NetworkingEngine.RequestType.SEGMENT) && 
-                    !request.uris[0].includes('__hdnea__')) {
-                    const sep = request.uris[0].includes('?') ? '&' : '?';
-                    request.uris[0] += sep + '__hdnea__=' + urlCookie;
-                }
-            });
-        }
+    const player=new shaka.Player();
+    await player.attach(video);
 
-        player.addEventListener('error', (event) => {
-             console.error('Shaka Error:', event.detail);
-        });
+    const ui=new shaka.ui.Overlay(player,container,video);
 
-        try {
-            await player.load(streamUrl);
-            video.play().catch(()=>{});
-        } catch (e) { 
-            console.error("Load failed", e); 
+    ui.configure({
+        addBigPlayButton: true,
+        controlPanelElements: [
+            "mute",            
+            "play_pause",      
+            "time_and_duration", 
+            "spacer",
+            "quality",
+            "picture_in_picture",
+            "fullscreen"
+        ],
+        seekBarColors: {
+            base: "white",
+            buffered: "red", 
+            played: "green"
         }
     });
-  <\/script>
-</body>
+
+    let drmConfig = {};
+    if (CONFIG.keyId && CONFIG.key) {
+         drmConfig = {clearKeys:{[CONFIG.keyId]:CONFIG.key}};
+    }
+
+    player.configure({
+      drm: drmConfig,
+      manifest:{defaultPresentationDelay:5},
+      streaming:{
+        lowLatencyMode:true,
+        bufferingGoal:10,
+        rebufferingGoal:2,
+        safeSeekOffset:5
+      }
+    });
+
+    let cookieValue="";
+
+    try{
+      const response=await fetch(CONFIG.cookieUrl,{cache:"no-store"});
+      const data=await response.json();
+      cookieValue=data.cookie||"";
+    }catch(e){}
+
+    if(cookieValue){
+      player.getNetworkingEngine().registerRequestFilter((type,request)=>{
+        request.headers["Referer"]="https://www.jiotv.com/";
+        request.headers["User-Agent"]="plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+        request.headers["Cookie"]=cookieValue;
+
+        let urlCookie=cookieValue.startsWith("__hdnea__=")?cookieValue.substring(10):cookieValue;
+
+        if((type===shaka.net.NetworkingEngine.RequestType.MANIFEST||
+        type===shaka.net.NetworkingEngine.RequestType.SEGMENT)&&
+        !request.uris[0].includes("__hdnea__")){
+          const sep=request.uris[0].includes("?")?"&":"?";
+          request.uris[0]+=sep+"__hdnea__="+urlCookie;
+        }
+      });
+    }
+
+    try{
+      await player.load(CONFIG.streamUrl);
+      video.play().catch(()=>{});
+    }catch(e){}
+
+    video.addEventListener("play",()=>{
+      video.muted=false;
+    });
+
+  });
+})();
+<\/script>
+</body>  
 </html>`;
 
             const blob = new Blob([playerCode], { type: 'text/html' });

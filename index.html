@@ -1,421 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VG Live TV</title>
-<meta name="referrer" content="no-referrer">
-<link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
-<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.css"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VG TV - Channel Grid</title>
+    
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #e50914;
+            --text: #f8fafc;
+            --sub-text: #94a3b8;
+        }
 
-<style>
-/* --- USER'S EXACT PLAYER STYLES --- */
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
 
-.shaka-video-container{
-    position:fixed;
-    inset:0;
-    background:#000;
-    display:none; /* Hidden by default, shown when playing */
-    align-items:center;
-    justify-content:center;
-    z-index: 1000;
-}
+        /* --- Navbar & Filters --- */
+        .nav { 
+            padding: 15px 20px; 
+            background: #111; 
+            border-bottom: 2px solid var(--accent); 
+            display: flex; 
+            gap: 15px; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        
+        .brand {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            margin-right: auto; /* Pushes filters to the right */
+        }
+        .brand span { color: var(--accent); }
 
-video{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    background:#000;
-}
+        .filter-group { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap;
+        }
 
-.custom-watermark{
-    position:absolute;
-    z-index:40;
-    pointer-events:none;
-    top:65%;
-    left:6%;
-    transform:translateY(-50%);
-    font-size:11px;
-    font-weight:600;
-    color:rgba(255,255,255,0.12);
-}
+        select, input { 
+            padding: 10px; 
+            border-radius: 6px; 
+            border: 1px solid #444; 
+            background: #000; 
+            color: #fff; 
+            outline: none; 
+            font-size: 14px; 
+            cursor: pointer;
+        }
+        select:focus, input:focus { border-color: var(--accent); }
 
-@media(max-width:700px){
-    .custom-watermark{font-size:9px;top:60%;left:16%}
-}
+        /* --- Grid Layout --- */
+        .grid { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
+            gap: 15px; 
+            align-content: start;
+        }
 
-/* --- GRID UI STYLES --- */
-:root {
-    --brand: #e50914; 
-    --brand-glow: rgba(229, 9, 20, 0.4);
-    --bg: #0a0f1a;
-    --card-bg: #111827;
-    --card-border: #1f2937;
-    --text-main: #f3f4f6;
-    --text-sub: #9ca3af;
-}
+        .card { 
+            background: var(--card); 
+            padding: 15px; 
+            border-radius: 10px; 
+            text-align: center; 
+            border: 1px solid #333; 
+            transition: 0.2s; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card:hover { 
+            border-color: var(--accent); 
+            transform: translateY(-3px); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
 
-#gridView {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 20px;
-    box-sizing: border-box;
-    width: 100%; 
-    max-width: 1200px;
-    margin: 0 auto;
-    background: var(--bg);
-    overflow-y: hidden;
-}
+        .card img { 
+            width: 70px; 
+            height: 70px; 
+            object-fit: contain; 
+            background: #fff; 
+            border-radius: 8px; 
+            padding: 5px; 
+            margin-bottom: 12px; 
+        }
 
-.top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-    margin-bottom: 10px;
-    width: 100%;
-}
+        .card-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            width: 100%;
+            overflow: hidden; 
+            white-space: nowrap; 
+            text-overflow: ellipsis; 
+            margin-bottom: 5px;
+        }
 
-.main-logo {
-    height: 40px; 
-    width: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-}
+        .card-badges {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
 
-.search-container {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end; 
-}
+        .badge {
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.1);
+            color: var(--sub-text);
+        }
+        .badge.category { border-left: 2px solid var(--accent); }
+        .badge.language { border-left: 2px solid #3b82f6; }
 
-#searchInput {
-    padding: 12px 20px;
-    width: 100%;
-    max-width: 400px; 
-    border-radius: 30px;
-    border: 1px solid var(--card-border);
-    background: var(--card-bg);
-    color: var(--text-main);
-    font-size: 15px;
-    outline: none;
-    transition: all 0.3s ease;
-}
+        /* Status Messages */
+        .status-msg { grid-column: 1/-1; text-align: center; color: var(--sub-text); margin-top: 50px; font-size: 16px; }
 
-#searchInput:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 12px var(--brand-glow);
-}
-
-.channel-count {
-    font-size: 14px;
-    color: var(--text-sub);
-    margin-bottom: 20px;
-    font-weight: 500;
-}
-.channel-count span {
-    color: var(--brand);
-    font-weight: bold;
-}
-
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 15px;
-    overflow-y: auto;
-    flex: 1;
-    padding-bottom: 20px;
-    padding-right: 5px;
-}
-
-.grid-container::-webkit-scrollbar { width: 8px; }
-.grid-container::-webkit-scrollbar-track { background: var(--bg); }
-.grid-container::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 4px; }
-.grid-container::-webkit-scrollbar-thumb:hover { background: var(--brand); }
-
-.card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 12px;
-    padding: 15px 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-.card:hover {
-    transform: translateY(-5px);
-    border-color: var(--brand);
-}
-.card img {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
-    margin-bottom: 10px;
-    background: #fff;
-    border-radius: 10px;
-    padding: 4px;
-}
-.card .name {
-    font-size: 13px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 100%;
-    color: var(--text-main);
-}
-.card .id-badge {
-    font-size: 10px;
-    color: var(--brand);
-    margin-top: 5px;
-    font-weight: 700;
-    background: rgba(229, 9, 20, 0.1);
-    padding: 3px 8px;
-    border-radius: 12px;
-}
-
-#loading {
-    text-align: center;
-    color: var(--text-sub);
-    margin-top: 50px;
-    font-size: 16px;
-}
-
-@media (max-width: 600px) {
-    #gridView { padding: 15px; }
-    .top-bar { margin-bottom: 10px; }
-    .main-logo { height: 28px; }
-    #searchInput { padding: 10px 16px; font-size: 14px; }
-    .grid-container { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
-}
-</style>
+    </style>
 </head>
 <body>
 
-<div id="gridView">
-    <div class="top-bar">
-        <img src="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/logo.png" alt="VG TV Logo" class="main-logo">
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search channels...">
+    <div class="nav">
+        <div class="brand">VG <span>TV</span></div>
+        
+        <div class="filter-group">
+            <input type="text" id="searchInput" placeholder="Search...">
+            <select id="catFilter">
+                <option value="all">All Categories</option>
+            </select>
+            <select id="langFilter">
+                <option value="all">All Languages</option>
+            </select>
         </div>
     </div>
-    <div id="channelCount" class="channel-count"></div>
-    <div id="loading">Fetching Channels...</div>
-    <div id="gridContainer" class="grid-container"></div>
-</div>
 
-<div class="shaka-video-container" id="player-container">
-    <video id="video" autoplay muted playsinline preload="metadata"></video>
-    <div class="custom-watermark"> </div>
-</div>
+    <div id="grid" class="grid">
+        <div class="status-msg">Loading channels...</div>
+    </div>
 
-<script>
-const API_URL = "https://raw.githubusercontent.com/vaathala00/jow/main/output.json";
-let allChannels = [];
+    <script>
+        const API_URL = "https://allrounderid.pages.dev/api/jiotv.json";
+        
+        let allChannels = [];
+        
+        // DOM Elements
+        const grid = document.getElementById('grid');
+        const searchInput = document.getElementById('searchInput');
+        const catFilter = document.getElementById('catFilter');
+        const langFilter = document.getElementById('langFilter');
 
-const gridView = document.getElementById("gridView");
-const playerContainer = document.getElementById("player-container");
-const gridContainer = document.getElementById("gridContainer");
-const searchInput = document.getElementById("searchInput");
-const loading = document.getElementById("loading");
-const channelCount = document.getElementById("channelCount");
-
-function getChannelFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("channel");
-}
-
-async function initApp() {
-    const targetChannelName = getChannelFromUrl();
-    
-    try {
-        const response = await fetch(API_URL);
-        const rawData = await response.json();
-
-        // Mapped to match your UI and Player expected keys
-        allChannels = rawData.map(c => ({
-            channel_name: c.name || "Unknown",
-            channel_logo: c.logo || "https://via.placeholder.com/100?text=TV",
-            channel_genre: c.group || c.category || "Live TV",
-            channel_url: c.link || c.url || c.stream_url || "",
-            keyId: c.keyId || c.key_id || "Null",
-            key: c.key || "Null"
-        }));
-
-        if (targetChannelName) {
-            // MODE 1: PLAY CHANNEL
-            const channel = allChannels.find(c => c.channel_name === targetChannelName);
-            if (channel) {
-                gridView.style.display = "none";
-                playerContainer.style.display = "flex";
-                document.title = channel.channel_name; 
-                startPlayer(channel);
-            } else {
-                alert("Channel not found!");
-            }
-        } else {
-            // MODE 2: SHOW GRID
-            playerContainer.style.display = "none";
-            gridView.style.display = "flex";
-            loading.style.display = "none";
-            
-            allChannels.sort((a, b) => (a.channel_name || "").localeCompare(b.channel_name || ""));
-            renderGrid(allChannels);
-        }
-    } catch (err) {
-        console.error("Failed to load channels:", err);
-        if(!targetChannelName) loading.innerText = "Failed to load channels.";
-    }
-}
-
-function renderGrid(channels) {
-    channelCount.innerHTML = `Total Channels: <span>${channels.length}</span>`;
-    gridContainer.innerHTML = "";
-    
-    if (channels.length === 0) {
-        gridContainer.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:var(--text-sub);padding-top:40px;'>No channels found.</div>";
-        return;
-    }
-
-    channels.forEach(c => {
-        const safeName = c.channel_name || "Unknown";
-        const safeLogo = c.channel_logo || "https://via.placeholder.com/100?text=VG+TV";
-        const category = c.channel_genre || "Live TV";
-
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.onclick = () => window.open("?channel=" + encodeURIComponent(safeName), "_blank");
-
-        card.innerHTML = `
-            <img src="${safeLogo}" onerror="this.src='https://via.placeholder.com/100?text=TV'">
-            <div class="name">${safeName}</div>
-            <div class="id-badge">${category}</div>
-        `;
-        gridContainer.appendChild(card);
-    });
-}
-
-searchInput.addEventListener("input", (e) => {
-    const term = e.target.value.toLowerCase();
-    const filtered = allChannels.filter(c => 
-        (c.channel_name && c.channel_name.toLowerCase().includes(term)) ||
-        (c.channel_genre && c.channel_genre.toLowerCase().includes(term))
-    );
-    renderGrid(filtered);
-});
-
-// --- USER'S EXACT PLAYER LOGIC WRAPPED IN A FUNCTION ---
-function startPlayer(channelData) {
-    const CONFIG = {
-        streamUrl: channelData.channel_url || "",
-        keyId: (channelData.keyId && channelData.keyId !== "Null") ? channelData.keyId : "",
-        key: (channelData.key && channelData.key !== "Null") ? channelData.key : "",
-        cookieUrl: "https://allrounderid2.pages.dev/api/cookie.json"
-    };
-
-    (async () => {
-        shaka.polyfill.installAll();
-        if(!shaka.Player.isBrowserSupported()) return;
-
-        const video = document.getElementById("video");
-        const container = document.getElementById("player-container");
-
-        video.muted = true;
-
-        const player = new shaka.Player();
-        await player.attach(video);
-
-        const ui = new shaka.ui.Overlay(player, container, video);
-
-        ui.configure({
-            addBigPlayButton: true,
-            controlPanelElements: [
-                "mute",           
-                "play_pause",      
-                "time_and_duration", 
-                "spacer",
-                "quality",
-                "picture_in_picture",
-                "fullscreen"
-            ],
-            seekBarColors: {
-                base: "white",
-                buffered: "red", 
-                played: "green"
-            }
-        });
-
-        let drmConfig = { clearKeys: {} };
-        if(CONFIG.keyId && CONFIG.key) {
-            drmConfig.clearKeys[CONFIG.keyId] = CONFIG.key;
-        }
-
-        player.configure({
-            drm: drmConfig,
-            manifest: { defaultPresentationDelay: 5 },
-            streaming: {
-                lowLatencyMode: true,
-                bufferingGoal: 10,
-                rebufferingGoal: 2,
-                safeSeekOffset: 5
-            }
-        });
-
-        let cookieValue = "";
-
-        try {
-            const response = await fetch(CONFIG.cookieUrl, { cache: "no-store" });
-            const data = await response.json();
-            cookieValue = data.cookie || "";
-        } catch(e) {
-            console.error("Failed to fetch cookie JSON", e);
-        }
-
-        if(cookieValue) {
-            player.getNetworkingEngine().registerRequestFilter((type, request) => {
+        // 1. Fetch the Data
+        async function loadData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error("Network response was not ok");
                 
-                // Safely extract the token and append it to the URL instead
-                let urlCookie = cookieValue.replace('Cookie: ', '').trim();
-                if (urlCookie.startsWith("__hdnea__=")) {
-                    urlCookie = urlCookie.substring(10);
-                }
+                const data = await response.json();
+                
+                // Normalize the data format just in case
+                allChannels = data.map(c => ({
+                    name: c.channel_name || "Unknown",
+                    logo: c.channel_logo || "https://via.placeholder.com/70?text=TV",
+                    category: c.channel_genre || c.category || "Others",
+                    language: c.channel_language || c.language || "Others"
+                }));
 
-                if((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
-                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
-                !request.uris[0].includes("__hdnea__")) {
-                    const sep = request.uris[0].includes("?") ? "&" : "?";
-                    request.uris[0] += sep + "__hdnea__=" + urlCookie;
-                }
+                // Sort alphabetically
+                allChannels.sort((a, b) => a.name.localeCompare(b.name));
+
+                populateFilters();
+                renderGrid(allChannels);
+
+            } catch (error) {
+                console.error("Fetch error:", error);
+                grid.innerHTML = `<div class="status-msg" style="color:red;">Failed to load data. Check console.</div>`;
+            }
+        }
+
+        // 2. Populate Dropdowns Dynamically
+        function populateFilters() {
+            // Get unique categories and languages using Sets
+            const categories = new Set();
+            const languages = new Set();
+
+            allChannels.forEach(c => {
+                if (c.category) categories.add(c.category);
+                if (c.language) languages.add(c.language);
+            });
+
+            // Sort and add to HTML
+            Array.from(categories).sort().forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                catFilter.appendChild(option);
+            });
+
+            Array.from(languages).sort().forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang;
+                option.textContent = lang;
+                langFilter.appendChild(option);
             });
         }
 
-        player.addEventListener('error', (event) => {
-             console.error('Shaka Error Code:', event.detail.code, 'Details:', event.detail);
-        });
+        // 3. Render the Grid
+        function renderGrid(channelsToRender) {
+            grid.innerHTML = ""; // Clear grid
 
-        try {
-            await player.load(CONFIG.streamUrl);
-            video.play().catch(()=>{});
-        } catch(e) {
-            console.error("Failed to load stream", e);
+            if (channelsToRender.length === 0) {
+                grid.innerHTML = `<div class="status-msg">No channels match your filters.</div>`;
+                return;
+            }
+
+            channelsToRender.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${c.logo}" alt="logo" loading="lazy">
+                    <div class="card-title">${c.name}</div>
+                    <div class="card-badges">
+                        <span class="badge category">${c.category}</span>
+                        <span class="badge language">${c.language}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
         }
 
-        video.addEventListener("play", () => {
-            video.muted = false;
-        });
-    })();
-}
+        // 4. Handle Filtering
+        function applyFilters() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCat = catFilter.value;
+            const selectedLang = langFilter.value;
 
-// Start App
-document.addEventListener("DOMContentLoaded", initApp);
-</script>
-</body>  
+            const filteredChannels = allChannels.filter(c => {
+                // Check Search
+                const matchesSearch = c.name.toLowerCase().includes(searchTerm);
+                
+                // Check Category
+                const matchesCat = (selectedCat === "all") || (c.category === selectedCat);
+                
+                // Check Language
+                const matchesLang = (selectedLang === "all") || (c.language === selectedLang);
+
+                // Include only if it matches ALL active filters
+                return matchesSearch && matchesCat && matchesLang;
+            });
+
+            renderGrid(filteredChannels);
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('input', applyFilters);
+        catFilter.addEventListener('change', applyFilters);
+        langFilter.addEventListener('change', applyFilters);
+
+        // Start App
+        loadData();
+    </script>
+</body>
 </html>

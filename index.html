@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VG TV</title>
+    <title>VG TV - Channel Directory</title>
     <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
     
     <style>
@@ -228,25 +228,6 @@
             max-height: 80px;
             overflow-y: auto;
         }
-        
-        /* Play Button in Modal */
-        .play-btn {
-            margin-top: 10px;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 15px;
-            cursor: pointer;
-            transition: 0.2s;
-            text-align: center;
-        }
-        .play-btn:hover {
-            background: #ff0a16;
-            transform: scale(1.02);
-        }
     </style>
 </head>
 <body>
@@ -382,7 +363,7 @@
             });
         }
 
-        // 4. Modal Functions & Data Packaging
+        // 4. Modal Functions & Data Display
         function openModal(channel) {
             document.getElementById('modalImg').src = channel.logo;
             document.getElementById('modalTitle').innerText = channel.name;
@@ -394,14 +375,6 @@
             } else if (cleanUrl && cleanUrl.includes('?')) {
                 cleanUrl = cleanUrl.split('?')[0]; 
             }
-
-            // PACKAGE FOR THE NEW TAB
-            const modalDataPackage = {
-                name: channel.name,
-                url: cleanUrl,
-                keyId: channel.keyId,
-                key: channel.key
-            };
 
             const modalDetails = document.getElementById('modalDetails');
             modalDetails.innerHTML = `
@@ -429,10 +402,6 @@
                     <span class="detail-label">Live Auth Cookie</span>
                     <div class="detail-value scrollable">${globalLiveCookie}</div>
                 </div>
-
-                <button class="play-btn" onclick='playInNewTab(${JSON.stringify(modalDataPackage).replace(/'/g, "&apos;")})'>
-                    ▶ Play Channel
-                </button>
             `;
 
             modal.classList.add('active');
@@ -467,174 +436,6 @@
         searchInput.addEventListener('input', applyFilters);
         catFilter.addEventListener('change', applyFilters);
         langFilter.addEventListener('change', applyFilters);
-
-        // 6. Generate the exact player code you provided in a new tab
-        function playInNewTab(c) {
-            const name = c.name || "VG Player";
-            const url = c.url || "";
-            const kid = (c.keyId && c.keyId !== "Null") ? c.keyId : "";
-            const key = (c.key && c.key !== "Null") ? c.key : "";
-
-            const safeKid = JSON.stringify(kid);
-            const safeKey = JSON.stringify(key);
-            const safeUrl = JSON.stringify(url);
-
-            const playerCode = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${name}</title>
-<meta name="referrer" content="no-referrer">
-<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"><\/script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.css"/>
-
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
-
-.shaka-video-container{
-    position:fixed;
-    inset:0;
-    background:#000;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-video{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    background:#000;
-}
-
-.custom-watermark{
-    position:absolute;
-    z-index:40;
-    pointer-events:none;
-    top:65%;
-    left:6%;
-    transform:translateY(-50%);
-    font-size:11px;
-    font-weight:600;
-    color:rgba(255,255,255,0.12);
-}
-
-@media(max-width:700px){
-    .custom-watermark{font-size:9px;top:60%;left:16%}
-}
-</style>
-</head>
-<body>
-
-<div class="shaka-video-container" id="player-container">
-    <video id="video" autoplay muted playsinline preload="metadata"></video>
-    <div class="custom-watermark"> </div>
-</div>
-
-<script>
-(function(){
-  const CONFIG={
-    streamUrl: ${safeUrl},
-    keyId: ${safeKid},
-    key: ${safeKey},
-    cookieUrl:"https://allrounderid2.pages.dev/api/cookie.json"
-  };
-
-  document.addEventListener("DOMContentLoaded",async()=>{
-
-    shaka.polyfill.installAll();
-    if(!shaka.Player.isBrowserSupported()) return;
-
-    const video=document.getElementById("video");
-    const container=document.getElementById("player-container");
-
-    video.muted=true;
-
-    const player=new shaka.Player();
-    await player.attach(video);
-
-    const ui=new shaka.ui.Overlay(player,container,video);
-
-    ui.configure({
-        addBigPlayButton: true,
-        controlPanelElements: [
-            "mute",            
-            "play_pause",      
-            "time_and_duration", 
-            "spacer",
-            "quality",
-            "picture_in_picture",
-            "fullscreen"
-        ],
-        seekBarColors: {
-            base: "white",
-            buffered: "red", 
-            played: "green"
-        }
-    });
-
-    let drmConfig = {};
-    if (CONFIG.keyId && CONFIG.key) {
-         drmConfig = {clearKeys:{[CONFIG.keyId]:CONFIG.key}};
-    }
-
-    player.configure({
-      drm: drmConfig,
-      manifest:{defaultPresentationDelay:5},
-      streaming:{
-        lowLatencyMode:true,
-        bufferingGoal:10,
-        rebufferingGoal:2,
-        safeSeekOffset:5
-      }
-    });
-
-    let cookieValue="";
-
-    try{
-      const response=await fetch(CONFIG.cookieUrl,{cache:"no-store"});
-      const data=await response.json();
-      cookieValue=data.cookie||"";
-    }catch(e){}
-
-    if(cookieValue){
-      player.getNetworkingEngine().registerRequestFilter((type,request)=>{
-        request.headers["Referer"]="https://www.jiotv.com/";
-        request.headers["User-Agent"]="plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
-        request.headers["Cookie"]=cookieValue;
-
-        let urlCookie=cookieValue.startsWith("__hdnea__=")?cookieValue.substring(10):cookieValue;
-
-        if((type===shaka.net.NetworkingEngine.RequestType.MANIFEST||
-        type===shaka.net.NetworkingEngine.RequestType.SEGMENT)&&
-        !request.uris[0].includes("__hdnea__")){
-          const sep=request.uris[0].includes("?")?"&":"?";
-          request.uris[0]+=sep+"__hdnea__="+urlCookie;
-        }
-      });
-    }
-
-    try{
-      await player.load(CONFIG.streamUrl);
-      video.play().catch(()=>{});
-    }catch(e){}
-
-    video.addEventListener("play",()=>{
-      video.muted=false;
-    });
-
-  });
-})();
-<\/script>
-</body>  
-</html>`;
-
-            const blob = new Blob([playerCode], { type: 'text/html' });
-            const blobUrl = URL.createObjectURL(blob);
-            window.open(blobUrl, '_blank');
-        }
 
         // Start App
         loadData();

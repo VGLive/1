@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VG TV - Channel Directory</title>
+    <title>VG TV - Live Player</title>
     <link rel="icon" href="https://raw.githubusercontent.com/VGLiveTV/vgtv/refs/heads/main/fav.png">
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" />
+
     <style>
         :root {
             --bg: #0f172a;
@@ -142,7 +145,7 @@
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(5px);
             display: flex;
             align-items: center;
@@ -160,20 +163,23 @@
             background: var(--card);
             border: 1px solid var(--card-border);
             border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
+            width: 95%;
+            max-width: 800px; /* Widened for Video Player */
+            max-height: 95vh;
             display: flex;
             flex-direction: column;
             transform: translateY(30px) scale(0.95);
             transition: all 0.3s ease;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            overflow: hidden;
         }
         .modal-overlay.active .modal-content {
             transform: translateY(0) scale(1);
         }
+        
         .modal-header {
-            padding: 20px;
+            padding: 15px 20px;
+            background: #0b1120;
             border-bottom: 1px solid var(--card-border);
             display: flex;
             align-items: center;
@@ -181,52 +187,78 @@
             position: relative;
         }
         .modal-header img {
-            width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 8px; padding: 4px;
+            width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 8px; padding: 2px;
         }
-        .modal-header h2 { font-size: 18px; color: #fff; }
+        .modal-header h2 { font-size: 16px; color: #fff; }
         
         .close-btn {
             position: absolute;
-            top: 20px; right: 20px;
+            top: 15px; right: 20px;
             background: none; border: none;
             color: var(--sub-text); font-size: 28px;
             cursor: pointer; line-height: 1; transition: 0.2s;
         }
         .close-btn:hover { color: var(--accent); }
 
+        /* --- SHAKA PLAYER INSIDE MODAL --- */
+        .player-wrapper {
+            width: 100%;
+            background: #000;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+        #player-container {
+            width: 100%; height: 100%;
+            position: relative;
+        }
+        video {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
         .modal-body {
-            padding: 20px;
+            padding: 15px 20px;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
+            background: var(--bg);
         }
 
         .detail-box {
             background: #0b1120;
             border: 1px solid #1e293b;
             border-radius: 8px;
-            padding: 12px 15px;
+            padding: 10px 12px;
         }
+        .detail-box.full-width { grid-column: 1 / -1; }
+        
         .detail-label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--accent);
             text-transform: uppercase;
             font-weight: bold;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             display: block;
         }
         .detail-value {
-            font-size: 13px;
+            font-size: 12px;
             color: #e2e8f0;
             font-family: monospace;
             word-break: break-all;
             user-select: all; 
         }
         .detail-value.scrollable {
-            max-height: 80px;
+            max-height: 60px;
             overflow-y: auto;
+        }
+
+        /* Hide default Shaka Spinners */
+        .shaka-spinner-container, .shaka-spinner, .shaka-spinner-svg { display: none !important; }
+
+        @media(max-width: 600px){
+            .modal-body { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -257,6 +289,13 @@
                 <h2 id="modalTitle">Channel Name</h2>
                 <button class="close-btn" onclick="closeModal()">×</button>
             </div>
+            
+            <div class="player-wrapper">
+                <div class="shaka-video-container" id="player-container" data-shaka-player>
+                    <video id="video" autoplay playsinline preload="metadata"></video>
+                </div>
+            </div>
+
             <div class="modal-body" id="modalDetails">
                 </div>
         </div>
@@ -276,10 +315,13 @@
         const langFilter = document.getElementById('langFilter');
         const modal = document.getElementById('channelModal');
 
+        // Shaka Player Globals
+        let shakaPlayer = null;
+        let currentStreamConfig = {};
+
         // 1. Fetch the Data
         async function loadData() {
             try {
-                // Fetch Channels
                 const response = await fetch(CHANNELS_API);
                 if (!response.ok) throw new Error("Network response was not ok");
                 
@@ -308,47 +350,28 @@
 
         // 2. Populate Dropdowns (WITH COUNTS)
         function populateFilters() {
-            // Get current filter states
             const currentCat = catFilter.value;
             const currentLang = langFilter.value;
 
-            // --- CATEGORY COUNTS ---
-            // Calculate category counts based on current Language filter
-            const catBaseList = allChannels.filter(c => {
-                return currentLang === "all" ? true : c.language === currentLang;
-            });
-
+            // Category Counts
+            const catBaseList = allChannels.filter(c => currentLang === "all" ? true : c.language === currentLang);
             const catCounts = {};
-            catBaseList.forEach(c => {
-                catCounts[c.category] = (catCounts[c.category] || 0) + 1;
-            });
-            const categories = Object.keys(catCounts).sort();
-
-            // Rebuild Category Dropdown
+            catBaseList.forEach(c => catCounts[c.category] = (catCounts[c.category] || 0) + 1);
+            
             let catHTML = `<option value="all">All Categories (${catBaseList.length})</option>`;
-            categories.forEach(cat => {
-                 const isSelected = cat === currentCat ? 'selected' : '';
-                 catHTML += `<option value="${cat}" ${isSelected}>${cat} (${catCounts[cat]})</option>`;
+            Object.keys(catCounts).sort().forEach(cat => {
+                 catHTML += `<option value="${cat}" ${cat === currentCat ? 'selected' : ''}>${cat} (${catCounts[cat]})</option>`;
             });
             catFilter.innerHTML = catHTML;
 
-            // --- LANGUAGE COUNTS ---
-            // Calculate language counts based on current Category filter
-            const langBaseList = allChannels.filter(c => {
-                return currentCat === "all" ? true : c.category === currentCat;
-            });
-
+            // Language Counts
+            const langBaseList = allChannels.filter(c => currentCat === "all" ? true : c.category === currentCat);
             const langCounts = {};
-            langBaseList.forEach(c => {
-                langCounts[c.language] = (langCounts[c.language] || 0) + 1;
-            });
-            const languages = Object.keys(langCounts).sort();
-
-            // Rebuild Language Dropdown
+            langBaseList.forEach(c => langCounts[c.language] = (langCounts[c.language] || 0) + 1);
+            
             let langHTML = `<option value="all">All Languages (${langBaseList.length})</option>`;
-            languages.forEach(lang => {
-                const isSelected = lang === currentLang ? 'selected' : '';
-                langHTML += `<option value="${lang}" ${isSelected}>${lang} (${langCounts[lang]})</option>`;
+            Object.keys(langCounts).sort().forEach(lang => {
+                langHTML += `<option value="${lang}" ${lang === currentLang ? 'selected' : ''}>${lang} (${langCounts[lang]})</option>`;
             });
             langFilter.innerHTML = langHTML;
         }
@@ -379,12 +402,51 @@
             });
         }
 
-        // 4. Modal Functions & Data Display
-        function openModal(channel) {
+        // 4. SHAKA PLAYER INTEGRATION & MODAL
+        async function initShaka() {
+            if (shakaPlayer) return; // Already initialized
+
+            shaka.polyfill.installAll();
+            if (!shaka.Player.isBrowserSupported()) {
+                console.error("Browser not supported!");
+                return;
+            }
+
+            const videoEl = document.getElementById('video');
+            const container = document.getElementById('player-container');
+
+            shakaPlayer = new shaka.Player();
+            await shakaPlayer.attach(videoEl);
+
+            const ui = new shaka.ui.Overlay(shakaPlayer, container, videoEl);
+            ui.configure({
+                controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','language','captions','picture_in_picture','quality','fullscreen'],
+                seekBarColors: { base: 'rgba(255,255,255,0.3)', buffered: 'rgba(229,9,20,0.5)', played: '#e50914' }
+            });
+
+            // Register Network Filter ONCE
+            shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
+                request.headers['Referer'] = 'https://www.jiotv.com/';
+                request.headers['User-Agent'] = 'plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6';
+
+                if (currentStreamConfig.cookie) {
+                    request.headers['Cookie'] = currentStreamConfig.cookie;
+
+                    if ((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                         type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
+                         !request.uris[0].includes('__hdnea__')) {
+                        const sep = request.uris[0].includes('?') ? '&' : '?';
+                        request.uris[0] += sep + currentStreamConfig.cookie;
+                    }
+                }
+            });
+        }
+
+        async function openModal(channel) {
             document.getElementById('modalImg').src = channel.logo;
             document.getElementById('modalTitle').innerText = channel.name;
 
-            // CLEAN THE URL: Stop exactly at .mpd
+            // CLEAN THE URL
             let cleanUrl = channel.url;
             if (cleanUrl && cleanUrl.includes('.mpd')) {
                 cleanUrl = cleanUrl.substring(0, cleanUrl.indexOf('.mpd') + 4);
@@ -392,43 +454,79 @@
                 cleanUrl = cleanUrl.split('?')[0]; 
             }
 
+            // Render Data Details
             const modalDetails = document.getElementById('modalDetails');
             modalDetails.innerHTML = `
-                <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-                    <span class="badge category">${channel.category}</span>
-                    <span class="badge language">${channel.language}</span>
-                </div>
-                
-                <div class="detail-box">
-                    <span class="detail-label">Stream URL</span>
-                    <div class="detail-value">${cleanUrl}</div>
-                </div>
-
                 <div class="detail-box">
                     <span class="detail-label">Key ID (KID)</span>
                     <div class="detail-value">${channel.keyId}</div>
                 </div>
-
                 <div class="detail-box">
                     <span class="detail-label">Key</span>
                     <div class="detail-value">${channel.key}</div>
                 </div>
-
-                <div class="detail-box">
+                <div class="detail-box full-width">
+                    <span class="detail-label">Stream URL</span>
+                    <div class="detail-value">${cleanUrl}</div>
+                </div>
+                <div class="detail-box full-width">
                     <span class="detail-label">Live Auth Cookie</span>
                     <div class="detail-value scrollable">${globalLiveCookie}</div>
                 </div>
             `;
 
+            // Setup Player Data
+            currentStreamConfig = {
+                url: cleanUrl,
+                keyId: channel.keyId,
+                key: channel.key,
+                cookie: globalLiveCookie
+            };
+
+            // Show Modal
             modal.classList.add('active');
             document.body.style.overflow = 'hidden'; 
+
+            // Initialize and Play Stream
+            await initShaka();
+            
+            let drmConfig = { clearKeys: {} };
+            if (currentStreamConfig.keyId !== "Null" && currentStreamConfig.key !== "Null") {
+                drmConfig.clearKeys[currentStreamConfig.keyId] = currentStreamConfig.key;
+            }
+
+            shakaPlayer.configure({
+                drm: drmConfig,
+                manifest: { defaultPresentationDelay: 5 },
+                streaming: { safeSeekOffset: 5, bufferingGoal: 10, rebufferingGoal: 2, lowLatencyMode: true }
+            });
+
+            try {
+                await shakaPlayer.unload();
+                await shakaPlayer.load(currentStreamConfig.url);
+                document.getElementById('video').play();
+            } catch (e) {
+                console.error("Stream Load Error:", e);
+                // Fallback attempt for non-DRM streams if DRM fails
+                if (e.code === 6001) { 
+                    console.log("Retrying without DRM config...");
+                    shakaPlayer.configure({ drm: {} });
+                    try { await shakaPlayer.load(currentStreamConfig.url); document.getElementById('video').play(); } catch(err){}
+                }
+            }
         }
 
         function closeModal() {
             modal.classList.remove('active');
             document.body.style.overflow = 'auto'; 
+            
+            // Stop video playing in the background
+            if (shakaPlayer) {
+                shakaPlayer.unload();
+            }
         }
 
+        // Click outside modal to close
         modal.addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
@@ -446,11 +544,8 @@
                 return matchesSearch && matchesCat && matchesLang;
             });
 
-            // Update UI based on filters
             renderGrid(filteredChannels);
-            
-            // Recalculate dropdown counts dynamically based on active filters
-            populateFilters();
+            populateFilters(); // Recalculate numbers
         }
 
         searchInput.addEventListener('input', applyFilters);

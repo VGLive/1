@@ -264,10 +264,10 @@
 
     <script>
         const CHANNELS_API = "https://allrounderid.pages.dev/api/jiotv.json";
-        const COOKIE_API = "https://allrounderid2.pages.dev/api/cookie.json";
         
         let allChannels = [];
-        let globalLiveCookie = "Fetching live cookie...";
+        // HARDCODED GLOBAL COOKIE
+        const globalLiveCookie = "__hdnea__=st=1774089189~exp=1774175589~acl=/*~hmac=b411fb6b11773061f720a9eb9dcbd244372a643dbe0113ca9f93042481c8202c";
         
         // DOM Elements
         const grid = document.getElementById('grid');
@@ -279,12 +279,6 @@
         // 1. Fetch the Data
         async function loadData() {
             try {
-                // Fetch Global Cookie for the modal display
-                fetch(COOKIE_API)
-                    .then(res => res.json())
-                    .then(data => globalLiveCookie = data.cookie || "No cookie found")
-                    .catch(err => globalLiveCookie = "Error fetching cookie");
-
                 // Fetch Channels
                 const response = await fetch(CHANNELS_API);
                 if (!response.ok) throw new Error("Network response was not ok");
@@ -312,29 +306,51 @@
             }
         }
 
-        // 2. Populate Dropdowns
+        // 2. Populate Dropdowns (WITH COUNTS)
         function populateFilters() {
-            const categories = new Set();
-            const languages = new Set();
+            // Get current filter states
+            const currentCat = catFilter.value;
+            const currentLang = langFilter.value;
 
-            allChannels.forEach(c => {
-                if (c.category) categories.add(c.category);
-                if (c.language) languages.add(c.language);
+            // --- CATEGORY COUNTS ---
+            // Calculate category counts based on current Language filter
+            const catBaseList = allChannels.filter(c => {
+                return currentLang === "all" ? true : c.language === currentLang;
             });
 
-            Array.from(categories).sort().forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat;
-                catFilter.appendChild(option);
+            const catCounts = {};
+            catBaseList.forEach(c => {
+                catCounts[c.category] = (catCounts[c.category] || 0) + 1;
+            });
+            const categories = Object.keys(catCounts).sort();
+
+            // Rebuild Category Dropdown
+            let catHTML = `<option value="all">All Categories (${catBaseList.length})</option>`;
+            categories.forEach(cat => {
+                 const isSelected = cat === currentCat ? 'selected' : '';
+                 catHTML += `<option value="${cat}" ${isSelected}>${cat} (${catCounts[cat]})</option>`;
+            });
+            catFilter.innerHTML = catHTML;
+
+            // --- LANGUAGE COUNTS ---
+            // Calculate language counts based on current Category filter
+            const langBaseList = allChannels.filter(c => {
+                return currentCat === "all" ? true : c.category === currentCat;
             });
 
-            Array.from(languages).sort().forEach(lang => {
-                const option = document.createElement('option');
-                option.value = lang;
-                option.textContent = lang;
-                langFilter.appendChild(option);
+            const langCounts = {};
+            langBaseList.forEach(c => {
+                langCounts[c.language] = (langCounts[c.language] || 0) + 1;
             });
+            const languages = Object.keys(langCounts).sort();
+
+            // Rebuild Language Dropdown
+            let langHTML = `<option value="all">All Languages (${langBaseList.length})</option>`;
+            languages.forEach(lang => {
+                const isSelected = lang === currentLang ? 'selected' : '';
+                langHTML += `<option value="${lang}" ${isSelected}>${lang} (${langCounts[lang]})</option>`;
+            });
+            langFilter.innerHTML = langHTML;
         }
 
         // 3. Render the Grid
@@ -430,7 +446,11 @@
                 return matchesSearch && matchesCat && matchesLang;
             });
 
+            // Update UI based on filters
             renderGrid(filteredChannels);
+            
+            // Recalculate dropdown counts dynamically based on active filters
+            populateFilters();
         }
 
         searchInput.addEventListener('input', applyFilters);

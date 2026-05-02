@@ -1,127 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>IPL Hindi</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon fill='orange' points='50,10 61,40 94,40 68,60 78,90 50,70 22,90 32,60 6,40 39,40'/></svg>">
-  <meta name="referrer" content="no-referrer">
+<!DOCTYPE html>  
+<html>  
+<head>  
+  <meta charset="UTF-8">  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+  <title>PSL Live</title>
+  <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/en/2/24/Official_logo_of_Pakistan_Super_League.png">
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.ui.min.js"></script>  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/controls.css"/>  
+  <style>  
+   * { margin: 0; padding: 0; box-sizing: border-box; }  
+    html, body {  
+      background: #000;  
+      height: 100vh;  
+      width: 100vw;  
+      overflow: hidden;  
+      font-family: system-ui, -apple-system, sans-serif;  
+    }  
+    .shaka-video-container {  
+      position: absolute;  
+      inset: 0;  
+      width: 100%;  
+      height: 100%;  
+    }  
+    video {  
+      width: 100%;  
+      height: 100%;  
+      background: #000;  
+      object-fit: contain;  
+    }  
+    .shaka-spinner-container,  
+    .shaka-spinner,  
+    .shaka-spinner-svg {  
+      display: none !important;  
+      visibility: hidden !important;  
+      opacity: 0 !important;  
+    }  
+  </style>  
+  </head>  
+  <body>  
 
-  <script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.ui.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/controls.css" />
-
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
+<div class="shaka-video-container" id="player-container">
+<video id="video" autoplay muted playsinline preload="metadata"></video>
+<div class="custom-watermark"> </div>
+</div>  
     
-    html, body {
-      width: 100%;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    .shaka-video-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
-
-    .custom-watermark {
-      position: absolute;
-      z-index: 40;
-      pointer-events: none;
-      top: 65%;
-      left: 6%;
-      transform: translateY(-50%);
-      font-size: 11px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.12);
-    }
-
-    @media(max-width: 700px){
-      .custom-watermark { font-size: 9px; top: 60%; left: 16%; }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="shaka-video-container" id="player-container">
-    <video id="video" autoplay playsinline preload="metadata"></video>
-    <div class="custom-watermark"> </div>
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      shaka.polyfill.installAll();
-      if (!shaka.Player.isBrowserSupported()) return;
-
-      const videoEl = document.getElementById('video');
-      const container = document.getElementById('player-container');
-
-      const player = new shaka.Player(videoEl);
-      const ui = new shaka.ui.Overlay(player, container, videoEl);
-
-      ui.configure({
+  <script>  
+    document.addEventListener('DOMContentLoaded', async () => {  
+      shaka.polyfill.installAll();  
+  
+      if (!shaka.Player.isBrowserSupported()) {  
+        console.error('Browser not supported');  
+        return;  
+      }  
+  
+      const video = document.querySelector('video');  
+      const player = new shaka.Player();  
+      await player.attach(video);  
+  
+      const container = document.querySelector('.shaka-video-container');  
+      const ui = new shaka.ui.Overlay(player, container, video);  
+  
+      ui.configure({  
         addBigPlayButton: true,
-        controlPanelElements: ['play_pause','time_and_duration','mute','volume','spacer','language','captions','picture_in_picture','quality','fullscreen'],
-        seekBarColors: { base: 'white', buffered: 'red', played: 'green' }
-      });
-
-      const kid = "400131994b445d8c8817202248760fda";
-      const key = "2d56cb6f07a75b9aff165d534ae2bfc4";
-      const cookieHeader = "__hdnea__=st=1776260688~exp=1776282288~acl=/bpk-tv/Star_Sports_HD1_Hindi_BTS/WDVLive/*~hmac=1d6f566fddd1dea505ced8756f5f5d2a2401f2464ecbf0c8090f757c7045aad4";
-      const streamUrl = "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_Hindi_BTS/WDVLive/index.mpd";
-
-      let drmConfig = { clearKeys: {} };
-      if (kid !== "Null" && key !== "Null") {
-        drmConfig.clearKeys[kid] = key;
-      }
-
-      player.configure({
-        drm: drmConfig,
-        manifest: { defaultPresentationDelay: 5 },
-        streaming: { safeSeekOffset: 5, bufferingGoal: 10, rebufferingGoal: 2, lowLatencyMode: true }
-      });
-
-      player.getNetworkingEngine().registerRequestFilter((type, request) => {
-        request.headers['Referer'] = 'https://www.jiotv.com/';
-        request.headers['User-Agent'] = 'plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6';
-
-        if (cookieHeader && cookieHeader !== "PUT_YOUR_COOKIE_HERE") {
-          request.headers['Cookie'] = cookieHeader;
-
-          if ((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
-               type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
-               !request.uris[0].includes('__hdnea__')) {
-            const sep = request.uris[0].includes('?') ? '&' : '?';
-            request.uris[0] += sep + cookieHeader;
-          }
+        controlPanelElements: [  
+          'play_pause', 'time_and_duration', 'mute', 'volume',  
+          'spacer', 'language', 'captions', 'picture_in_picture',  
+          'quality', 'fullscreen'  
+        ],  
+        seekBarColors: {  
+          base: 'white',  
+          buffered: 'red',  
+          played: 'green'  
         }
-      });
-
-      try {
-        await player.load(streamUrl);
-        videoEl.play();
-      } catch (e) {
-        console.error("Stream Load Error:", e);
-        if (e.code === 6001) { 
-            player.configure({ drm: {} });
-            try { await player.load(streamUrl); videoEl.play(); } catch(err){}
-        }
-      }
-    });
-  </script>
-</body>
+      });  
+  
+      // ✅ Your DRM Key + MPD URL  
+      let drmConfig = {  
+        clearKeys: {  
+          "853f3648541578a64d73665594568d2a": "9f5a98e26094f397d1d7cefd41d1ebfc"  
+        }  
+      };  
+  
+      let streamUrl = "https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/kdtysddt3h/out/v1/8a7efdb4fd4746758d9d631fd6252bc4/cenc.mpd";  
+  
+      player.configure({  
+        drm: drmConfig,  
+        streaming: {  
+          lowLatencyMode: true,  
+          bufferingGoal: 15,  
+          rebufferingGoal: 2,  
+          bufferBehind: 15,  
+          retryParameters: {  
+            timeout: 10000,  
+            maxAttempts: 5,  
+            baseDelay: 300,  
+            backoffFactor: 1.2  
+          },  
+          segmentRequestTimeout: 8000,  
+          segmentPrefetchLimit: 2,  
+          useNativeHlsOnSafari: true  
+        },  
+        manifest: {  
+          retryParameters: {  
+            timeout: 8000,  
+            maxAttempts: 3  
+          }  
+        }  
+      });  
+  
+      player.addEventListener('error', (event) => {  
+        console.error('Shaka Player Error:', event.detail);  
+      });  
+  
+      try {  
+        await player.load(streamUrl);  
+        console.log("Stream loaded successfully");  
+      } catch (error) {  
+        console.error('Load error:', error);  
+      }  
+    });  
+  </script>  
+</body>  
 </html>

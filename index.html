@@ -3,10 +3,19 @@
 <head>  
   <meta charset="UTF-8">  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <title>PSL Live</title>
-  <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/en/2/24/Official_logo_of_Pakistan_Super_League.png">
-  <script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.ui.min.js"></script>  
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/controls.css"/>  
+  <title>Willow</title>     
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js" crossorigin="anonymous"></script>  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" crossorigin="anonymous">  
+      
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-L7VPXZYQPN"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-L7VPXZYQPN');
+</script>
   <style>  
    * { margin: 0; padding: 0; box-sizing: border-box; }  
     html, body {  
@@ -36,14 +45,15 @@
       opacity: 0 !important;  
     }  
   </style>  
-  </head>  
-  <body>  
+</head>  
 
-<div class="shaka-video-container" id="player-container">
-<video id="video" autoplay muted playsinline preload="metadata"></video>
-<div class="custom-watermark"> </div>
-</div>  
-    
+ 
+  
+  <body>  
+  <div class="shaka-video-container" data-shaka-player>  
+    <video autoplay playsinline preload="metadata" poster="https://elamplificador.com/wp-content/uploads/2023/08/trucos-amazon-primevideo-ksrD-620x349@abc.png"></video>  
+  </div>  
+  
   <script>  
     document.addEventListener('DOMContentLoaded', async () => {  
       shaka.polyfill.installAll();  
@@ -61,23 +71,27 @@
       const ui = new shaka.ui.Overlay(player, container, video);  
   
       ui.configure({  
-        addBigPlayButton: true,
         controlPanelElements: [  
           'play_pause', 'time_and_duration', 'mute', 'volume',  
           'spacer', 'language', 'captions', 'picture_in_picture',  
           'quality', 'fullscreen'  
         ],  
-        seekBarColors: {  
-          base: 'white',  
-          buffered: 'red',  
-          played: 'green'  
-        }
+        volumeBarColors: {  
+  base: 'rgba(0, 136, 255, 0.3)',  
+  level: 'rgb(0, 136, 255)'  
+},  
+seekBarColors: {  
+  base: 'rgba(0, 136, 255, 0.3)',  
+  buffered: 'rgba(0, 136, 255, 0.6)',  
+  played: 'rgb(0, 136, 255)'  
+}
       });  
   
       // ✅ Your DRM Key + MPD URL  
       let drmConfig = {  
         clearKeys: {  
-          "853f3648541578a64d73665594568d2a": "9f5a98e26094f397d1d7cefd41d1ebfc"  
+          "853f3648541578a64d73665594568d2a":
+ "9f5a98e26094f397d1d7cefd41d1ebfc"  
         }  
       };  
   
@@ -120,5 +134,7 @@
       }  
     });  
   </script>  
-</body>  
+  <script>(function(s){s.dataset.zone='10603308',s.src='https://bvtpk.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+  
+  </body>  
 </html>

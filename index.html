@@ -1,140 +1,225 @@
-<!DOCTYPE html>  
-<html>  
-<head>  
-  <meta charset="UTF-8">  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <title>Willow</title>     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js" crossorigin="anonymous"></script>  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" crossorigin="anonymous">  
-      
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-L7VPXZYQPN"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jio Stream By @Finally_Live_Streaming</title>
 
-  gtag('config', 'G-L7VPXZYQPN');
-</script>
-  <style>  
-   * { margin: 0; padding: 0; box-sizing: border-box; }  
-    html, body {  
-      background: #000;  
-      height: 100vh;  
-      width: 100vw;  
-      overflow: hidden;  
-      font-family: system-ui, -apple-system, sans-serif;  
-    }  
-    .shaka-video-container {  
-      position: absolute;  
-      inset: 0;  
-      width: 100%;  
-      height: 100%;  
-    }  
-    video {  
-      width: 100%;  
-      height: 100%;  
-      background: #000;  
-      object-fit: contain;  
-    }  
-    .shaka-spinner-container,  
-    .shaka-spinner,  
-    .shaka-spinner-svg {  
-      display: none !important;  
-      visibility: hidden !important;  
-      opacity: 0 !important;  
-    }  
-  </style>  
-</head>  
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.css">
 
- 
-  
-  <body>  
-  <div class="shaka-video-container" data-shaka-player>  
-    <video autoplay playsinline preload="metadata" poster="https://elamplificador.com/wp-content/uploads/2023/08/trucos-amazon-primevideo-ksrD-620x349@abc.png"></video>  
-  </div>  
-  
-  <script>  
-    document.addEventListener('DOMContentLoaded', async () => {  
-      shaka.polyfill.installAll();  
-  
-      if (!shaka.Player.isBrowserSupported()) {  
-        console.error('Browser not supported');  
-        return;  
-      }  
-  
-      const video = document.querySelector('video');  
-      const player = new shaka.Player();  
-      await player.attach(video);  
-  
-      const container = document.querySelector('.shaka-video-container');  
-      const ui = new shaka.ui.Overlay(player, container, video);  
-  
-      ui.configure({  
-        controlPanelElements: [  
-          'play_pause', 'time_and_duration', 'mute', 'volume',  
-          'spacer', 'language', 'captions', 'picture_in_picture',  
-          'quality', 'fullscreen'  
-        ],  
-        volumeBarColors: {  
-  base: 'rgba(0, 136, 255, 0.3)',  
-  level: 'rgb(0, 136, 255)'  
-},  
-seekBarColors: {  
-  base: 'rgba(0, 136, 255, 0.3)',  
-  buffered: 'rgba(0, 136, 255, 0.6)',  
-  played: 'rgb(0, 136, 255)'  
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:sans-serif}
+
+.shaka-video-container{
+position:fixed;
+inset:0;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#000;
 }
-      });  
-  
-      // ✅ Your DRM Key + MPD URL  
-      let drmConfig = {  
-        clearKeys: {  
-          "853f3648541578a64d73665594568d2a":
- "9f5a98e26094f397d1d7cefd41d1ebfc"  
-        }  
-      };  
-  
-      let streamUrl = "https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/kdtysddt3h/out/v1/8a7efdb4fd4746758d9d631fd6252bc4/cenc.mpd";  
-  
-      player.configure({  
-        drm: drmConfig,  
-        streaming: {  
-          lowLatencyMode: true,  
-          bufferingGoal: 15,  
-          rebufferingGoal: 2,  
-          bufferBehind: 15,  
-          retryParameters: {  
-            timeout: 10000,  
-            maxAttempts: 5,  
-            baseDelay: 300,  
-            backoffFactor: 1.2  
-          },  
-          segmentRequestTimeout: 8000,  
-          segmentPrefetchLimit: 2,  
-          useNativeHlsOnSafari: true  
-        },  
-        manifest: {  
-          retryParameters: {  
-            timeout: 8000,  
-            maxAttempts: 3  
-          }  
-        }  
-      });  
-  
-      player.addEventListener('error', (event) => {  
-        console.error('Shaka Player Error:', event.detail);  
-      });  
-  
-      try {  
-        await player.load(streamUrl);  
-        console.log("Stream loaded successfully");  
-      } catch (error) {  
-        console.error('Load error:', error);  
-      }  
-    });  
-  </script>  
-  <script>(function(s){s.dataset.zone='10603308',s.src='https://bvtpk.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-  
-  </body>  
+
+video{
+width:100%;
+height:100%;
+object-fit:contain;
+background:#000;
+}
+
+.block-overlay{
+position:fixed;
+inset:0;
+z-index:99999;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#000;
+text-align:center;
+}
+
+.block-box{
+padding:30px;
+background:#111;
+border-radius:12px;
+}
+
+.block-title{
+font-size:28px;
+font-weight:bold;
+color:#fff;
+margin-bottom:10px;
+}
+
+.block-sub{
+font-size:14px;
+color:#aaa;
+}
+</style>
+</head>
+
+<body>
+
+<div class="shaka-video-container" id="player-container">
+  <video id="video" autoplay muted playsinline></video>
+</div>
+<script>
+if (confirm("Join Our Telegram Channel @Finally_Live_Streaming")) {
+  window.open("https://telegram.me/Finally_Live_Streaming", '_blank');
+}
+</script>
+<script>
+(function(){
+
+  function isSandboxedEnv(){
+    try {
+      if (window.self === window.top) return false;
+      if (window.frameElement && window.frameElement.hasAttribute("sandbox")) return true;
+      try {
+        document.domain = document.domain;
+      } catch (e) { return true; }
+      return false;
+    } catch(e) { return true; }
+  }
+
+  function blockScreen(){
+    const container = document.getElementById("player-container");
+    container.style.display = "none";
+
+    const overlay = document.createElement("div");
+    overlay.className = "block-overlay";
+    overlay.innerHTML = `
+      <div class="block-box">
+        <div class="block-title">Blocked</div>
+        <div class="block-sub">Open in Chrome & disable adblock</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  if(isSandboxedEnv()){
+    blockScreen();
+    return;
+  }
+
+  // ✅ GET CHANNEL ID
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id") || "SS1";
+
+  // ✅ CHANNEL CONFIG
+  const CHANNELS = {
+
+    SS1: {
+      name: "Star Sports 1",
+      streamUrl: "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_BTS/WDVLive/index.mpd",
+      keyId: "965dc2ddb1d85138ad787999a7f30ca5",
+      key: "859695076e67fe961836b564db6d689c",
+      cookie: "__hdnea__=st=1777729116~exp=1777750716~acl=/bpk-tv/Star_Sports_HD1_BTS/WDVLive/*~hmac=f41648a187e3889e31ad82cd82fe917fe600314dfd94aee52af0985f6498ac91"
+    },
+
+    SS1H: {
+      name: "Star Sports 1 Hindi",
+      streamUrl: "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD1_Hindi_BTS/WDVLive/index.mpd",
+      keyId: "400131994b445d8c8817202248760fda",
+      key: "2d56cb6f07a75b9aff165d534ae2bfc4",
+      cookie: "__hdnea__=st=1777729117~exp=1777750717~acl=/bpk-tv/Star_Sports_HD1_Hindi_BTS/WDVLive/*~hmac=1764abf410c1e437f30e8d659535e3346c6e6c793f5a438da169931a67d46533"
+    },
+
+    SS2: {
+      name: "Star Sports 2",
+      streamUrl: "https://jiotvpllive.cdn.jio.com/bpk-tv/Star_Sports_HD2_BTS/WDVLive/index.mpd",
+      keyId: "9457eb90129456fa8ea95e10ba4ac51e",
+      key: "e620a970cea474c491ac78ae71a4d764",
+      cookie: "__hdnea__=st=1777374561~exp=1777396161~acl=/bpk-tv/Star_Sports_HD2_BTS/WDVLive/*~hmac=f1133bf2543c35cd0a5c248cce26f8a4e3b6af1aefad8a78509b9468eb210b97"
+    },
+
+    SSH2: {
+      name: "Star Sports 2 Hindi",
+      streamUrl: "https://jiotvpllive.cdn.jio.com/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/index.mpd",
+      keyId: "bd1ea6a1c1fb5dcdb709434e0826bbc0",
+      key: "f57f22cba32739ce7beb1fab3f3d060b",
+      cookie: "__hdnea__=st=1777374561~exp=1777396161~acl=/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/*~hmac=850a63f31385bc263a1320f1710ccb9b583724c9ea6ae195ae293517d8644191"
+    }
+
+  };
+
+  const CONFIG = CHANNELS[id] || CHANNELS["SS1"];
+
+  document.addEventListener("DOMContentLoaded", async () => {
+
+    shaka.polyfill.installAll();
+    if (!shaka.Player.isBrowserSupported()) return;
+
+    const video = document.getElementById("video");
+    const container = document.getElementById("player-container");
+
+    video.muted = true;
+
+    const player = new shaka.Player();
+    await player.attach(video);
+
+    const ui = new shaka.ui.Overlay(player, container, video);
+
+    // ✅ CLEAN MINIMAL UI
+    ui.configure({
+      controlPanelElements: [
+        "mute",
+        "play_pause",
+        "time_and_duration",
+        "spacer",
+        "quality",
+        "fullscreen"
+      ]
+    });
+
+    player.configure({
+      drm: { clearKeys: { [CONFIG.keyId]: CONFIG.key } },
+      manifest: { defaultPresentationDelay: 5 },
+      streaming: {
+        lowLatencyMode: true,
+        bufferingGoal: 10,
+        rebufferingGoal: 2,
+        safeSeekOffset: 5
+      }
+    });
+
+    const cookieValue = CONFIG.cookie;
+
+    if (cookieValue) {
+      player.getNetworkingEngine().registerRequestFilter((type, request) => {
+
+        request.headers["Referer"] = "https://www.jiotv.com/";
+        request.headers["User-Agent"] = "plaYtv/7.1.5";
+        request.headers["Cookie"] = cookieValue;
+
+        let urlCookie = cookieValue.replace("__hdnea__=", "");
+
+        if ((type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+             type === shaka.net.NetworkingEngine.RequestType.SEGMENT) &&
+             !request.uris[0].includes("__hdnea__")) {
+
+          const sep = request.uris[0].includes("?") ? "&" : "?";
+          request.uris[0] += sep + "__hdnea__=" + urlCookie;
+        }
+      });
+    }
+
+    try {
+      await player.load(CONFIG.streamUrl);
+      video.play().catch(()=>{});
+    } catch (e) {
+      console.error(e);
+    }
+
+    video.addEventListener("play", () => {
+      video.muted = false;
+    });
+
+  });
+
+})();
+</script>
+
+</body>
 </html>
